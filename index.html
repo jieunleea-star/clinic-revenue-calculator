@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>내 한의원 매출구조 설계하기</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #1B2A4A;
+            --primary-light: #2D5A8E;
+            --accent: #3B82F6;
+            --accent-light: #DBEAFE;
+            --success: #10B981;
+            --success-light: #D1FAE5;
+            --warning: #F59E0B;
+            --warning-light: #FEF3C7;
+            --danger: #EF4444;
+            --danger-light: #FEE2E2;
+            --bg: #F0F4F8;
+            --card: #FFFFFF;
+            --text: #1E293B;
+            --text-secondary: #64748B;
+            --border: #E2E8F0;
+            --shadow: 0 4px 24px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .step {
+            display: none;
+            min-height: 100vh;
+            padding: 20px;
+            animation: fadeIn 0.4s ease;
+        }
+        .step.active { display: flex; flex-direction: column; align-items: center; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* ===== Landing ===== */
+        #landing {
+            background: linear-gradient(165deg, #0F172A 0%, #1E3A5F 50%, #1B2A4A 100%);
+            color: white;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 24px;
+        }
+        #landing .badge {
+            display: inline-block;
+            padding: 6px 16px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            margin-bottom: 24px;
+        }
+        #landing h1 {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1.3;
+            margin-bottom: 12px;
+        }
+        #landing .subtitle {
+            font-size: 15px;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+        .qr-section {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: var(--radius);
+            padding: 28px;
+            margin-bottom: 24px;
+        }
+        .qr-placeholder {
+            width: 180px;
+            height: 180px;
+            background: white;
+            border-radius: 12px;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .qr-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 12px;
+        }
+        .qr-section p {
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+        }
+        .qr-section .qr-label {
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 24px 0;
+            cursor: pointer;
+        }
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+        .checkbox-wrapper label {
+            font-size: 15px;
+            color: rgba(255,255,255,0.9);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* ===== Buttons ===== */
+        .btn-primary {
+            width: 100%;
+            padding: 16px 24px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn-primary:hover { background: #2563EB; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59,130,246,0.4); }
+        .btn-primary:disabled { background: #475569; cursor: not-allowed; transform: none; box-shadow: none; opacity: 0.6; }
+
+        .btn-secondary {
+            width: 100%;
+            padding: 14px 24px;
+            background: transparent;
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn-secondary:hover { background: var(--accent-light); }
+
+        .btn-group { display: flex; gap: 12px; margin-top: 24px; }
+        .btn-group .btn-back {
+            flex: 0 0 auto;
+            padding: 14px 20px;
+            background: var(--bg);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .btn-group .btn-primary { flex: 1; }
+
+        /* ===== Progress Bar ===== */
+        .progress-bar {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 32px;
+            padding: 0 4px;
+        }
+        .progress-step {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--border);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 700;
+            flex-shrink: 0;
+            transition: all 0.3s;
+        }
+        .progress-step.active { background: var(--accent); color: white; }
+        .progress-step.done { background: var(--success); color: white; }
+        .progress-line {
+            flex: 1;
+            height: 3px;
+            background: var(--border);
+            transition: background 0.3s;
+        }
+        .progress-line.done { background: var(--success); }
+
+        /* ===== Cards ===== */
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 16px;
+        }
+        .card-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .card h2 {
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1.3;
+            margin-bottom: 6px;
+        }
+        .card .desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        /* ===== Input ===== */
+        .input-group {
+            position: relative;
+            margin-bottom: 16px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .input-wrapper input {
+            width: 100%;
+            padding: 14px 60px 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 20px;
+            font-weight: 700;
+            font-family: inherit;
+            color: var(--text);
+            transition: border-color 0.2s;
+            -moz-appearance: textfield;
+        }
+        .input-wrapper input::-webkit-outer-spin-button,
+        .input-wrapper input::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .input-wrapper input:focus { outline: none; border-color: var(--accent); }
+        .input-wrapper .unit {
+            position: absolute;
+            right: 16px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* ===== Split Display ===== */
+        .split-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .split-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--border);
+        }
+        .split-card .label {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .split-card .value {
+            font-size: 20px;
+            font-weight: 800;
+        }
+        .split-card .sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+        .split-card.insurance { border-color: #3B82F6; background: #EFF6FF; }
+        .split-card.insurance .value { color: #2563EB; }
+        .split-card.non-insurance { border-color: #8B5CF6; background: #F5F3FF; }
+        .split-card.non-insurance .value { color: #7C3AED; }
+        .split-card.auto-insurance { border-color: #6B7280; background: #F9FAFB; }
+        .split-card.auto-insurance .value { color: #374151; }
+
+        /* ===== Working Days Selector ===== */
+        .days-selector {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .days-option {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+            font-family: inherit;
+        }
+        .days-option.active {
+            border-color: var(--accent);
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+        .days-option .num { font-size: 18px; font-weight: 800; }
+        .days-option .label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .days-option.active .label { color: var(--accent); }
+
+        /* ===== Detail Table ===== */
+        .detail-table {
+            width: 100%;
+            margin-top: 16px;
+        }
+        .detail-row {
+            display: grid;
+            grid-template-columns: 70px 1fr 80px 90px;
+            gap: 8px;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .detail-row.header {
+            border-bottom: 2px solid var(--text);
+            padding-bottom: 8px;
+            margin-bottom: 4px;
+        }
+        .detail-row.header span {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+        .detail-row .item-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .detail-row .item-price {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .detail-row .item-price input {
+            width: 100%;
+            padding: 8px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            font-family: inherit;
+            -moz-appearance: textfield;
+        }
+        .detail-row .item-price input::-webkit-outer-spin-button,
+        .detail-row .item-price input::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .detail-row .item-price input:focus { outline: none; border-color: var(--accent); }
+        .detail-row .item-count input {
+            width: 100%;
+            padding: 8px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            font-family: inherit;
+            background: #F8FAFC;
+            -moz-appearance: textfield;
+        }
+        .detail-row .item-count input::-webkit-outer-spin-button,
+        .detail-row .item-count input::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .detail-row .item-count input:focus { outline: none; border-color: var(--accent); background: white; }
+        .detail-row .item-total {
+            font-size: 14px;
+            font-weight: 700;
+            text-align: right;
+            color: var(--primary);
+        }
+
+        /* ===== Target vs Actual ===== */
+        .target-comparison {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-radius: var(--radius-sm);
+            margin-top: 16px;
+            font-weight: 700;
+        }
+        .target-comparison.over {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+        .target-comparison.under {
+            background: var(--warning-light);
+            color: #B45309;
+        }
+        .target-comparison.match {
+            background: var(--success-light);
+            color: var(--success);
+        }
+        .target-comparison .tc-label { font-size: 13px; }
+        .target-comparison .tc-value { font-size: 18px; }
+
+        /* ===== Result Page ===== */
+        .result-hero {
+            text-align: center;
+            padding: 32px 24px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: var(--radius);
+            color: white;
+            margin-bottom: 16px;
+        }
+        .result-hero .label { font-size: 14px; opacity: 0.8; margin-bottom: 4px; }
+        .result-hero .amount { font-size: 36px; font-weight: 900; }
+        .result-hero .amount .unit { font-size: 18px; font-weight: 600; }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .result-item {
+            background: var(--card);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+        .result-item .ri-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        .result-item .ri-value {
+            font-size: 22px;
+            font-weight: 800;
+        }
+        .result-item .ri-sub {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .action-items {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 16px;
+        }
+        .action-items h3 {
+            font-size: 16px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .action-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            align-items: flex-start;
+        }
+        .action-item:last-child { border-bottom: none; }
+        .action-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+            margin-top: 6px;
+        }
+        .action-text {
+            font-size: 14px;
+            line-height: 1.5;
+            font-weight: 500;
+        }
+        .action-text strong { font-weight: 700; color: var(--primary); }
+
+        /* ===== CTA Section ===== */
+        .cta-section {
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+            border: 2px solid #F59E0B;
+            border-radius: var(--radius);
+            padding: 28px 24px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .cta-section .cta-emoji { font-size: 40px; margin-bottom: 12px; }
+        .cta-section h3 {
+            font-size: 20px;
+            font-weight: 800;
+            color: #92400E;
+            margin-bottom: 8px;
+        }
+        .cta-section p {
+            font-size: 14px;
+            color: #A16207;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .cta-section .btn-cta {
+            display: inline-block;
+            padding: 14px 32px;
+            background: #F59E0B;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .cta-section .btn-cta:hover { background: #D97706; transform: translateY(-1px); }
+
+        /* ===== Summary Table ===== */
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .summary-table th, .summary-table td {
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+        }
+        .summary-table th {
+            font-weight: 700;
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        .summary-table td:last-child {
+            text-align: right;
+            font-weight: 700;
+        }
+        .summary-table tr.total {
+            border-top: 2px solid var(--text);
+        }
+        .summary-table tr.total td {
+            font-weight: 800;
+            font-size: 15px;
+            color: var(--primary);
+        }
+        .summary-table .cat-header td {
+            font-weight: 700;
+            color: var(--accent);
+            font-size: 13px;
+            padding-top: 16px;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        /* ===== Misc ===== */
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 20px 0;
+        }
+        .info-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: var(--accent-light);
+            color: var(--accent);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .text-center { text-align: center; }
+        .mt-8 { margin-top: 8px; }
+        .mt-16 { margin-top: 16px; }
+        .mt-24 { margin-top: 24px; }
+        .mb-16 { margin-bottom: 16px; }
+
+        /* ===== Date/Time Input ===== */
+        .datetime-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .datetime-row input[type="date"],
+        .datetime-row input[type="time"] {
+            flex: 1;
+            padding: 12px 14px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            color: var(--text);
+            transition: border-color 0.2s;
+            background: white;
+        }
+        .datetime-row input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .btn-now {
+            padding: 12px 16px;
+            background: var(--accent-light);
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .btn-now:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* ===== Share Section ===== */
+        .share-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .btn-share {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .btn-share:hover {
+            background: var(--primary-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(27,42,74,0.3);
+        }
+
+        /* ===== Toast ===== */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--primary);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: var(--shadow-lg);
+            z-index: 9999;
+            transition: transform 0.3s ease;
+            font-family: inherit;
+            pointer-events: none;
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ===== Result Date ===== */
+        .result-date {
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        /* ===== Shared Mode Banner ===== */
+        .shared-banner {
+            background: var(--accent-light);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 400px) {
+            .detail-row {
+                grid-template-columns: 60px 1fr 65px 75px;
+                gap: 6px;
+            }
+            .detail-row .item-name { font-size: 13px; }
+            .result-hero .amount { font-size: 28px; }
+        }
+
+        /* ===== Auto Insurance Input ===== */
+        .auto-ins-input {
+            margin-top: 12px;
+        }
+        .auto-ins-input .input-wrapper input {
+            font-size: 16px;
+            padding: 12px 60px 12px 16px;
+        }
+
+        /* ===== Editable Split ===== */
+        .split-card .edit-value {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .split-card .edit-value input {
+            width: 100px;
+            padding: 8px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 800;
+            text-align: right;
+            font-family: inherit;
+            -moz-appearance: textfield;
+        }
+        .split-card .edit-value input::-webkit-outer-spin-button,
+        .split-card .edit-value input::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .split-card .edit-value input:focus { outline: none; border-color: var(--accent); }
+        .split-card .edit-value .unit {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        .split-card .pct {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ========== LANDING ========== -->
+<div id="landing" class="step active">
+    <div class="container">
+        <div class="badge">개원세션</div>
+        <h1>내 한의원<br>매출구조 설계하기</h1>
+        <p class="subtitle">목표 매출을 입력하고, 급여·비급여 항목별<br>구체적인 매출 구조를 직접 설계해보세요.</p>
+
+        <div class="qr-section">
+            <div class="qr-label">경영세션 대기알림 등록</div>
+            <p style="margin-bottom:16px; font-size:13px;">QR을 스캔하고 등록을 완료해주세요</p>
+            <div class="qr-placeholder">
+                <img src="qr.jpg" alt="경영세션 대기알림 등록 QR코드">
+            </div>
+        </div>
+
+        <div class="checkbox-wrapper" onclick="toggleRegistration()">
+            <input type="checkbox" id="registrationCheck">
+            <label for="registrationCheck">대기알림 등록을 완료했습니다</label>
+        </div>
+
+        <button class="btn-primary" id="startBtn" disabled onclick="goToStep('step1')">
+            매출 설계 시작하기
+        </button>
+    </div>
+</div>
+
+<!-- ========== STEP 1: 목표매출 입력 + 분배 ========== -->
+<div id="step1" class="step">
+    <div class="container">
+        <div class="progress-bar">
+            <div class="progress-step active">1</div>
+            <div class="progress-line"></div>
+            <div class="progress-step">2</div>
+            <div class="progress-line"></div>
+            <div class="progress-step">3</div>
+            <div class="progress-line"></div>
+            <div class="progress-step">4</div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">STEP 1</div>
+            <h2>나의 한의원<br>목표 매출은 얼마인가요?</h2>
+            <p class="desc">월 목표매출을 입력하면 급여·비급여·자보 예상 매출을 자동으로 계산합니다.</p>
+
+            <div class="input-group">
+                <label>월 목표매출</label>
+                <div class="input-wrapper">
+                    <input type="number" id="targetRevenue" placeholder="10000" oninput="calculateSplit()">
+                    <span class="unit">만원</span>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>월 근무일수</label>
+                <div class="days-selector">
+                    <button class="days-option" onclick="setWorkingDays(22, this)">
+                        <div class="num">22일</div>
+                        <div class="label">주 5일</div>
+                    </button>
+                    <button class="days-option active" onclick="setWorkingDays(26, this)">
+                        <div class="num">26일</div>
+                        <div class="label">주 6일</div>
+                    </button>
+                    <button class="days-option" onclick="setWorkingDays(30, this)">
+                        <div class="num">30일</div>
+                        <div class="label">매일</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="splitResult" class="card" style="display:none;">
+            <div class="card-header">예상 매출 분배</div>
+            <p class="desc">금액을 직접 수정할 수 있습니다. <span class="info-badge">예시 비율 기준</span></p>
+
+            <div class="split-cards">
+                <div class="split-card insurance">
+                    <div>
+                        <div class="label">급여 매출</div>
+                        <div class="pct" id="insPct">70%</div>
+                    </div>
+                    <div class="edit-value">
+                        <input type="number" id="insRevenue" oninput="onSplitChange()">
+                        <span class="unit">만원</span>
+                    </div>
+                </div>
+                <div class="split-card non-insurance">
+                    <div>
+                        <div class="label">비급여 매출</div>
+                        <div class="pct" id="nonInsPct">23%</div>
+                    </div>
+                    <div class="edit-value">
+                        <input type="number" id="nonInsRevenue" oninput="onSplitChange()">
+                        <span class="unit">만원</span>
+                    </div>
+                </div>
+                <div class="split-card auto-insurance">
+                    <div>
+                        <div class="label">자보 매출</div>
+                        <div class="pct" id="autoInsPct">7%</div>
+                    </div>
+                    <div class="edit-value">
+                        <input type="number" id="autoInsRevenue" oninput="onSplitChange()">
+                        <span class="unit">만원</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="target-comparison match" id="splitComparison">
+                <span class="tc-label">합계</span>
+                <span class="tc-value" id="splitTotal">0만원</span>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-back" onclick="goToStep('landing')">이전</button>
+            <button class="btn-primary" id="step1Next" disabled onclick="goToStep('step2')">다음 단계</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== STEP 2: 급여 상세 설계 ========== -->
+<div id="step2" class="step">
+    <div class="container">
+        <div class="progress-bar">
+            <div class="progress-step done">1</div>
+            <div class="progress-line done"></div>
+            <div class="progress-step active">2</div>
+            <div class="progress-line"></div>
+            <div class="progress-step">3</div>
+            <div class="progress-line"></div>
+            <div class="progress-step">4</div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">STEP 2</div>
+            <h2>급여 매출을<br>설계해보세요</h2>
+            <p class="desc">
+                목표 급여 매출: <strong id="insTarget">0만원</strong> (일 <strong id="insDailyTarget">0만원</strong>)<br>
+                객단가와 일 환자수를 조정하여 설계하세요.
+            </p>
+
+            <div class="detail-table">
+                <div class="detail-row header">
+                    <span>구분</span>
+                    <span>객단가(만원)</span>
+                    <span>일 환자수</span>
+                    <span style="text-align:right">일 매출</span>
+                </div>
+                <div class="detail-row">
+                    <span class="item-name">65세↑</span>
+                    <span class="item-price"><input type="number" id="ins_senior_price" value="2.5" step="0.5" oninput="calcInsurance()"></span>
+                    <span class="item-count"><input type="number" id="ins_senior_count" value="14" min="0" oninput="calcInsurance()"></span>
+                    <span class="item-total" id="ins_senior_total">35만원</span>
+                </div>
+                <div class="detail-row">
+                    <span class="item-name">비추나</span>
+                    <span class="item-price"><input type="number" id="ins_general_price" value="5" step="0.5" oninput="calcInsurance()"></span>
+                    <span class="item-count"><input type="number" id="ins_general_count" value="30" min="0" oninput="calcInsurance()"></span>
+                    <span class="item-total" id="ins_general_total">150만원</span>
+                </div>
+                <div class="detail-row">
+                    <span class="item-name">추나</span>
+                    <span class="item-price"><input type="number" id="ins_chuna_price" value="8" step="0.5" oninput="calcInsurance()"></span>
+                    <span class="item-count"><input type="number" id="ins_chuna_count" value="10" min="0" oninput="calcInsurance()"></span>
+                    <span class="item-total" id="ins_chuna_total">80만원</span>
+                </div>
+            </div>
+
+            <div class="target-comparison" id="insComparison">
+                <div>
+                    <span class="tc-label">일 급여 합계</span>
+                    <div style="font-size:11px; color:inherit; opacity:0.8; margin-top:2px;">일 환자 <strong id="insDailyPatients">54</strong>명</div>
+                </div>
+                <span class="tc-value" id="insDailyTotal">265만원</span>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-back" onclick="goToStep('step1')">이전</button>
+            <button class="btn-primary" onclick="goToStep('step3')">다음: 비급여 설계</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== STEP 3: 비급여 상세 설계 ========== -->
+<div id="step3" class="step">
+    <div class="container">
+        <div class="progress-bar">
+            <div class="progress-step done">1</div>
+            <div class="progress-line done"></div>
+            <div class="progress-step done">2</div>
+            <div class="progress-line done"></div>
+            <div class="progress-step active">3</div>
+            <div class="progress-line"></div>
+            <div class="progress-step">4</div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">STEP 3</div>
+            <h2>비급여 매출을<br>설계해보세요</h2>
+            <p class="desc">
+                목표 비급여 매출: <strong id="nonInsTarget">0만원</strong> (일 <strong id="nonInsDailyTarget">0만원</strong>)<br>
+                객단가는 예시이며, 자유롭게 수정 가능합니다.
+            </p>
+
+            <div class="detail-table">
+                <div class="detail-row header">
+                    <span>항목</span>
+                    <span>객단가(만원)</span>
+                    <span>일 건수</span>
+                    <span style="text-align:right">일 매출</span>
+                </div>
+                <div class="detail-row" data-ni="gongjindan">
+                    <span class="item-name">공진단</span>
+                    <span class="item-price"><input type="number" value="5" step="1" oninput="calcNonInsurance()"></span>
+                    <span class="item-count"><input type="number" value="0" min="0" oninput="calcNonInsurance()"></span>
+                    <span class="item-total">0만원</span>
+                </div>
+                <div class="detail-row" data-ni="herbal">
+                    <span class="item-name">한약</span>
+                    <span class="item-price"><input type="number" value="30" step="1" oninput="calcNonInsurance()"></span>
+                    <span class="item-count"><input type="number" value="0" min="0" oninput="calcNonInsurance()"></span>
+                    <span class="item-total">0만원</span>
+                </div>
+                <div class="detail-row" data-ni="diet">
+                    <span class="item-name">다이어트</span>
+                    <span class="item-price"><input type="number" value="16" step="1" oninput="calcNonInsurance()"></span>
+                    <span class="item-count"><input type="number" value="0" min="0" oninput="calcNonInsurance()"></span>
+                    <span class="item-total">0만원</span>
+                </div>
+                <div class="detail-row" data-ni="otc">
+                    <span class="item-name">상비약</span>
+                    <span class="item-price"><input type="number" value="10" step="1" oninput="calcNonInsurance()"></span>
+                    <span class="item-count"><input type="number" value="0" min="0" oninput="calcNonInsurance()"></span>
+                    <span class="item-total">0만원</span>
+                </div>
+                <div class="detail-row" data-ni="yakchim">
+                    <span class="item-name">약침</span>
+                    <span class="item-price"><input type="number" value="5" step="1" oninput="calcNonInsurance()"></span>
+                    <span class="item-count"><input type="number" value="0" min="0" oninput="calcNonInsurance()"></span>
+                    <span class="item-total">0만원</span>
+                </div>
+                <div class="detail-row" data-ni="skin">
+                    <span class="item-name">피부</span>
+                    <span class="item-price"><input type="number" value="10" step="1" oninput="calcNonInsurance()"></span>
+                    <span class="item-count"><input type="number" value="0" min="0" oninput="calcNonInsurance()"></span>
+                    <span class="item-total">0만원</span>
+                </div>
+                <div class="detail-row" data-ni="deer">
+                    <span class="item-name">녹용</span>
+                    <span class="item-price"><input type="number" value="85" step="1" oninput="calcNonInsurance()"></span>
+                    <span class="item-count"><input type="number" value="0" min="0" step="0.1" oninput="calcNonInsurance()"></span>
+                    <span class="item-total">0만원</span>
+                </div>
+                <div class="detail-row" data-ni="chuna">
+                    <span class="item-name">추나</span>
+                    <span class="item-price"><input type="number" value="8" step="1" oninput="calcNonInsurance()"></span>
+                    <span class="item-count"><input type="number" value="0" min="0" oninput="calcNonInsurance()"></span>
+                    <span class="item-total">0만원</span>
+                </div>
+                <div class="detail-row" data-ni="manual">
+                    <span class="item-name">도수</span>
+                    <span class="item-price"><input type="number" value="5" step="1" oninput="calcNonInsurance()"></span>
+                    <span class="item-count"><input type="number" value="0" min="0" oninput="calcNonInsurance()"></span>
+                    <span class="item-total">0만원</span>
+                </div>
+            </div>
+
+            <div class="target-comparison" id="nonInsComparison">
+                <div>
+                    <span class="tc-label">일 비급여 합계</span>
+                    <div style="font-size:11px; color:inherit; opacity:0.8; margin-top:2px;">일 <strong id="nonInsDailyCases">0</strong>건</div>
+                </div>
+                <span class="tc-value" id="nonInsDailyTotal">0만원</span>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-back" onclick="goToStep('step2')">이전</button>
+            <button class="btn-primary" onclick="showResults()">결과 확인하기</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== STEP 4: 결과 ========== -->
+<div id="step4" class="step">
+    <div class="container">
+        <div class="progress-bar">
+            <div class="progress-step done">1</div>
+            <div class="progress-line done"></div>
+            <div class="progress-step done">2</div>
+            <div class="progress-line done"></div>
+            <div class="progress-step done">3</div>
+            <div class="progress-line done"></div>
+            <div class="progress-step active">4</div>
+        </div>
+
+        <div class="result-hero">
+            <div class="label">나의 월 목표매출</div>
+            <div class="amount" id="resultTotal">0<span class="unit">만원</span></div>
+        </div>
+
+        <div class="result-grid">
+            <div class="result-item">
+                <div class="ri-label">일 목표 환자수</div>
+                <div class="ri-value" id="resultDailyPatients" style="color:#2563EB;">0명</div>
+                <div class="ri-sub">급여 환자 기준</div>
+            </div>
+            <div class="result-item">
+                <div class="ri-label">일 비급여 건수</div>
+                <div class="ri-value" id="resultDailyCases" style="color:#7C3AED;">0건</div>
+                <div class="ri-sub">비급여 항목 합계</div>
+            </div>
+            <div class="result-item">
+                <div class="ri-label">급여 매출</div>
+                <div class="ri-value" id="resultIns" style="color:#2563EB;">0</div>
+                <div class="ri-sub" id="resultInsPct">0%</div>
+            </div>
+            <div class="result-item">
+                <div class="ri-label">비급여 매출</div>
+                <div class="ri-value" id="resultNonIns" style="color:#7C3AED;">0</div>
+                <div class="ri-sub" id="resultNonInsPct">0%</div>
+            </div>
+        </div>
+
+        <!-- 상세 요약 테이블 -->
+        <div class="card">
+            <div class="card-header">매출 설계 상세</div>
+            <table class="summary-table" id="summaryTable">
+                <thead>
+                    <tr>
+                        <th>항목</th>
+                        <th>객단가</th>
+                        <th>일 건수</th>
+                        <th style="text-align:right">월 매출</th>
+                    </tr>
+                </thead>
+                <tbody id="summaryBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 액션 아이템 -->
+        <div class="action-items">
+            <h3>📋 실행 액션 아이템</h3>
+            <div id="actionItemsList"></div>
+        </div>
+
+        <!-- CTA -->
+        <div class="cta-section">
+            <div class="cta-emoji">🤔</div>
+            <h3>이 목표, 막막하게 느껴지시나요?</h3>
+            <p>
+                매출 설계는 시작일 뿐입니다.<br>
+                <strong>구체적인 실행 전략</strong>이 있어야 달성할 수 있습니다.<br><br>
+                경영세션에서 환자 유입부터 매출 달성까지<br>
+                실전 전략을 함께 설계합니다.
+            </p>
+            <button class="btn-cta" onclick="scrollToQR()">경영세션 대기알림 등록하기</button>
+        </div>
+
+        <div class="btn-group" style="margin-bottom:40px;">
+            <button class="btn-back" onclick="goToStep('step3')">이전</button>
+            <button class="btn-secondary" onclick="goToStep('landing')" style="flex:1;">처음부터 다시하기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== State =====
+const state = {
+    targetRevenue: 0,
+    workingDays: 26,
+    insRevenue: 0,
+    nonInsRevenue: 0,
+    autoInsRevenue: 0
+};
+
+// ===== Navigation =====
+function goToStep(stepId) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById(stepId).classList.add('active');
+    window.scrollTo(0, 0);
+
+    if (stepId === 'step2') {
+        updateInsTargets();
+        calcInsurance();
+    }
+    if (stepId === 'step3') {
+        updateNonInsTargets();
+        calcNonInsurance();
+    }
+}
+
+// ===== Landing =====
+function toggleRegistration() {
+    const cb = document.getElementById('registrationCheck');
+    cb.checked = !cb.checked;
+    document.getElementById('startBtn').disabled = !cb.checked;
+}
+document.getElementById('registrationCheck').addEventListener('change', function() {
+    document.getElementById('startBtn').disabled = !this.checked;
+});
+
+// ===== Step 1: Target & Split =====
+function calculateSplit() {
+    const target = parseFloat(document.getElementById('targetRevenue').value) || 0;
+    state.targetRevenue = target;
+
+    if (target > 0) {
+        document.getElementById('splitResult').style.display = 'block';
+        document.getElementById('step1Next').disabled = false;
+
+        const ins = Math.round(target * 0.70);
+        const nonIns = Math.round(target * 0.23);
+        const autoIns = target - ins - nonIns;
+
+        document.getElementById('insRevenue').value = ins;
+        document.getElementById('nonInsRevenue').value = nonIns;
+        document.getElementById('autoInsRevenue').value = autoIns;
+
+        onSplitChange();
+    } else {
+        document.getElementById('splitResult').style.display = 'none';
+        document.getElementById('step1Next').disabled = true;
+    }
+}
+
+function onSplitChange() {
+    const target = state.targetRevenue;
+    const ins = parseFloat(document.getElementById('insRevenue').value) || 0;
+    const nonIns = parseFloat(document.getElementById('nonInsRevenue').value) || 0;
+    const autoIns = parseFloat(document.getElementById('autoInsRevenue').value) || 0;
+    const total = ins + nonIns + autoIns;
+
+    state.insRevenue = ins;
+    state.nonInsRevenue = nonIns;
+    state.autoInsRevenue = autoIns;
+
+    document.getElementById('insPct').textContent = target > 0 ? Math.round(ins/target*100) + '%' : '0%';
+    document.getElementById('nonInsPct').textContent = target > 0 ? Math.round(nonIns/target*100) + '%' : '0%';
+    document.getElementById('autoInsPct').textContent = target > 0 ? Math.round(autoIns/target*100) + '%' : '0%';
+
+    document.getElementById('splitTotal').textContent = numberFormat(total) + '만원';
+
+    const comp = document.getElementById('splitComparison');
+    if (total === target) {
+        comp.className = 'target-comparison match';
+    } else if (total > target) {
+        comp.className = 'target-comparison over';
+    } else {
+        comp.className = 'target-comparison under';
+    }
+}
+
+function setWorkingDays(days, el) {
+    state.workingDays = days;
+    document.querySelectorAll('.days-option').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+}
+
+// ===== Step 2: 급여 =====
+function updateInsTargets() {
+    document.getElementById('insTarget').textContent = numberFormat(state.insRevenue) + '만원';
+    const daily = Math.round(state.insRevenue / state.workingDays);
+    document.getElementById('insDailyTarget').textContent = numberFormat(daily) + '만원';
+}
+
+function calcInsurance() {
+    const categories = ['senior', 'general', 'chuna'];
+    let totalDaily = 0;
+    let totalPatients = 0;
+
+    categories.forEach(cat => {
+        const price = parseFloat(document.getElementById(`ins_${cat}_price`).value) || 0;
+        const count = parseFloat(document.getElementById(`ins_${cat}_count`).value) || 0;
+        const daily = Math.round(price * count * 10) / 10;
+        totalDaily += daily;
+        totalPatients += count;
+        document.getElementById(`ins_${cat}_total`).textContent = daily + '만원';
+    });
+
+    document.getElementById('insDailyTotal').textContent = Math.round(totalDaily) + '만원';
+    document.getElementById('insDailyPatients').textContent = totalPatients;
+
+    const targetDaily = Math.round(state.insRevenue / state.workingDays);
+    const comp = document.getElementById('insComparison');
+    if (Math.abs(Math.round(totalDaily) - targetDaily) <= 5) {
+        comp.className = 'target-comparison match';
+    } else if (Math.round(totalDaily) > targetDaily) {
+        comp.className = 'target-comparison over';
+    } else {
+        comp.className = 'target-comparison under';
+    }
+}
+
+// ===== Step 3: 비급여 =====
+function updateNonInsTargets() {
+    document.getElementById('nonInsTarget').textContent = numberFormat(state.nonInsRevenue) + '만원';
+    const daily = Math.round(state.nonInsRevenue / state.workingDays);
+    document.getElementById('nonInsDailyTarget').textContent = numberFormat(daily) + '만원';
+}
+
+function calcNonInsurance() {
+    const rows = document.querySelectorAll('#step3 .detail-row[data-ni]');
+    let totalDaily = 0;
+    let totalCases = 0;
+
+    rows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const price = parseFloat(inputs[0].value) || 0;
+        const count = parseFloat(inputs[1].value) || 0;
+        const daily = Math.round(price * count * 10) / 10;
+        totalDaily += daily;
+        totalCases += count;
+        row.querySelector('.item-total').textContent = daily + '만원';
+    });
+
+    document.getElementById('nonInsDailyTotal').textContent = Math.round(totalDaily * 10) / 10 + '만원';
+    document.getElementById('nonInsDailyCases').textContent = totalCases;
+
+    const targetDaily = Math.round(state.nonInsRevenue / state.workingDays);
+    const comp = document.getElementById('nonInsComparison');
+    if (Math.abs(Math.round(totalDaily) - targetDaily) <= 3) {
+        comp.className = 'target-comparison match';
+    } else if (Math.round(totalDaily) > targetDaily) {
+        comp.className = 'target-comparison over';
+    } else {
+        comp.className = 'target-comparison under';
+    }
+}
+
+// ===== Step 4: Results =====
+function showResults() {
+    // 기본 정보
+    const target = state.targetRevenue;
+    document.getElementById('resultTotal').innerHTML = numberFormat(target) + '<span class="unit">만원</span>';
+
+    // 급여 환자수
+    const seniorCount = parseFloat(document.getElementById('ins_senior_count').value) || 0;
+    const generalCount = parseFloat(document.getElementById('ins_general_count').value) || 0;
+    const chunaCount = parseFloat(document.getElementById('ins_chuna_count').value) || 0;
+    const totalPatients = seniorCount + generalCount + chunaCount;
+    document.getElementById('resultDailyPatients').textContent = totalPatients + '명';
+
+    // 비급여 건수
+    let totalNonInsCases = 0;
+    document.querySelectorAll('#step3 .detail-row[data-ni]').forEach(row => {
+        totalNonInsCases += parseFloat(row.querySelectorAll('input')[1].value) || 0;
+    });
+    document.getElementById('resultDailyCases').textContent = Math.round(totalNonInsCases * 10) / 10 + '건';
+
+    // 급여/비급여 매출
+    const insMonthly = calcInsMonthly();
+    const nonInsMonthly = calcNonInsMonthly();
+    const totalActual = insMonthly + nonInsMonthly + state.autoInsRevenue;
+
+    document.getElementById('resultIns').textContent = numberFormat(insMonthly) + '만';
+    document.getElementById('resultNonIns').textContent = numberFormat(nonInsMonthly) + '만';
+    document.getElementById('resultInsPct').textContent = totalActual > 0 ? Math.round(insMonthly/totalActual*100) + '%' : '0%';
+    document.getElementById('resultNonInsPct').textContent = totalActual > 0 ? Math.round(nonInsMonthly/totalActual*100) + '%' : '0%';
+
+    // 상세 테이블
+    buildSummaryTable(insMonthly, nonInsMonthly);
+
+    // 액션 아이템
+    buildActionItems(totalPatients, totalNonInsCases, chunaCount, insMonthly, nonInsMonthly);
+
+    goToStep('step4');
+}
+
+function calcInsMonthly() {
+    const categories = ['senior', 'general', 'chuna'];
+    let total = 0;
+    categories.forEach(cat => {
+        const price = parseFloat(document.getElementById(`ins_${cat}_price`).value) || 0;
+        const count = parseFloat(document.getElementById(`ins_${cat}_count`).value) || 0;
+        total += price * count * state.workingDays;
+    });
+    return Math.round(total);
+}
+
+function calcNonInsMonthly() {
+    let total = 0;
+    document.querySelectorAll('#step3 .detail-row[data-ni]').forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const price = parseFloat(inputs[0].value) || 0;
+        const count = parseFloat(inputs[1].value) || 0;
+        total += price * count * state.workingDays;
+    });
+    return Math.round(total);
+}
+
+function buildSummaryTable(insMonthly, nonInsMonthly) {
+    const tbody = document.getElementById('summaryBody');
+    let html = '';
+
+    // 급여
+    html += '<tr class="cat-header"><td colspan="4">급여</td></tr>';
+    const insItems = [
+        { name: '65세 이상', priceId: 'ins_senior_price', countId: 'ins_senior_count' },
+        { name: '65세 미만 (비추나)', priceId: 'ins_general_price', countId: 'ins_general_count' },
+        { name: '65세 미만 (추나)', priceId: 'ins_chuna_price', countId: 'ins_chuna_count' }
+    ];
+    insItems.forEach(item => {
+        const price = parseFloat(document.getElementById(item.priceId).value) || 0;
+        const count = parseFloat(document.getElementById(item.countId).value) || 0;
+        const monthly = Math.round(price * count * state.workingDays);
+        html += `<tr><td>${item.name}</td><td>${price}만원</td><td>${count}명/일</td><td style="text-align:right">${numberFormat(monthly)}만원</td></tr>`;
+    });
+    html += `<tr style="background:#EFF6FF"><td colspan="3"><strong>급여 소계</strong></td><td style="text-align:right"><strong>${numberFormat(insMonthly)}만원</strong></td></tr>`;
+
+    // 비급여
+    html += '<tr class="cat-header"><td colspan="4">비급여</td></tr>';
+    document.querySelectorAll('#step3 .detail-row[data-ni]').forEach(row => {
+        const name = row.querySelector('.item-name').textContent;
+        const inputs = row.querySelectorAll('input');
+        const price = parseFloat(inputs[0].value) || 0;
+        const count = parseFloat(inputs[1].value) || 0;
+        const monthly = Math.round(price * count * state.workingDays);
+        if (count > 0) {
+            html += `<tr><td>${name}</td><td>${price}만원</td><td>${count}건/일</td><td style="text-align:right">${numberFormat(monthly)}만원</td></tr>`;
+        }
+    });
+    html += `<tr style="background:#F5F3FF"><td colspan="3"><strong>비급여 소계</strong></td><td style="text-align:right"><strong>${numberFormat(nonInsMonthly)}만원</strong></td></tr>`;
+
+    // 자보
+    if (state.autoInsRevenue > 0) {
+        html += '<tr class="cat-header"><td colspan="4">자보</td></tr>';
+        html += `<tr><td>자동차보험</td><td>-</td><td>-</td><td style="text-align:right">${numberFormat(state.autoInsRevenue)}만원</td></tr>`;
+    }
+
+    // 합계
+    const grandTotal = insMonthly + nonInsMonthly + state.autoInsRevenue;
+    html += `<tr class="total"><td colspan="3">월 총 매출</td><td style="text-align:right">${numberFormat(grandTotal)}만원</td></tr>`;
+
+    tbody.innerHTML = html;
+}
+
+function buildActionItems(totalPatients, totalNonInsCases, chunaCount, insMonthly, nonInsMonthly) {
+    const list = document.getElementById('actionItemsList');
+    const items = [];
+    const totalMonthly = insMonthly + nonInsMonthly + state.autoInsRevenue;
+
+    // 일 환자수
+    items.push(`하루 평균 <strong>${totalPatients}명</strong>의 환자를 진료해야 합니다.`);
+
+    // 월 환자수
+    const monthlyPatients = totalPatients * state.workingDays;
+    items.push(`월 <strong>${numberFormat(monthlyPatients)}명</strong>의 환자 내원이 필요합니다.`);
+
+    // 신규 환자 (약 10%)
+    const newPatients = Math.round(monthlyPatients * 0.1);
+    items.push(`월 신규 환자 약 <strong>${newPatients}명</strong> 유입이 필요합니다. (전체의 10% 가정)`);
+
+    // 추나
+    if (chunaCount > 0) {
+        items.push(`추나 환자를 하루 <strong>${chunaCount}명</strong> 확보해야 합니다.`);
+        items.push(`검진실에 <strong>체형측정기를 도입</strong>하고, 체형이 틀어진 환자에게 체형 측정을 권유하세요.`);
+    }
+
+    // 비급여 비중
+    if (totalMonthly > 0) {
+        const nonInsPct = Math.round(nonInsMonthly / totalMonthly * 100);
+        items.push(`비급여 매출 비중이 <strong>${nonInsPct}%</strong>입니다. 비급여 진료 역량 강화가 핵심입니다.`);
+    }
+
+    // 비급여 건수
+    if (totalNonInsCases > 0) {
+        items.push(`하루 비급여 <strong>${Math.round(totalNonInsCases * 10) / 10}건</strong>을 달성해야 합니다.`);
+    }
+
+    // 비급여 항목별 액션
+    const niRows = document.querySelectorAll('#step3 .detail-row[data-ni]');
+    niRows.forEach(row => {
+        const name = row.querySelector('.item-name').textContent;
+        const count = parseFloat(row.querySelectorAll('input')[1].value) || 0;
+        if (count > 0) {
+            const actions = {
+                '공진단': '공진단 정기 구매 고객 관리 시스템을 마련하세요.',
+                '한약': '한약 처방 상담 역량을 강화하고 복약 지도 체계를 구축하세요.',
+                '다이어트': '다이어트 프로그램 홍보 및 체계적 상담 프로세스를 구축하세요.',
+                '약침': '약침 치료 프로토콜을 정립하고 환자 교육 자료를 준비하세요.',
+                '피부': '피부 진료 프로그램과 시술 메뉴를 체계화하세요.',
+                '녹용': '녹용 한약 시즌 마케팅과 VIP 고객 관리에 집중하세요.',
+                '추나': '추나 비급여 패키지 상품을 개발하세요.',
+                '도수': '도수치료 전문 인력 확보와 시설을 준비하세요.',
+                '상비약': '상비약 진열 및 데스크 추천 프로세스를 만드세요.'
+            };
+            if (actions[name]) {
+                items.push(actions[name]);
+            }
+        }
+    });
+
+    list.innerHTML = items.map(text =>
+        `<div class="action-item"><div class="action-dot"></div><div class="action-text">${text}</div></div>`
+    ).join('');
+}
+
+function scrollToQR() {
+    goToStep('landing');
+    setTimeout(() => {
+        document.querySelector('.qr-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+}
+
+// ===== Utility =====
+function numberFormat(num) {
+    return Math.round(num).toLocaleString('ko-KR');
+}
+</script>
+
+</body>
+</html>
