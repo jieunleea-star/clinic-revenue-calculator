@@ -792,6 +792,17 @@
 </head>
 <body>
 
+<!-- ========== 사이트 비활성화 화면 ========== -->
+<div id="siteClosed" class="step" style="display:none;">
+    <div class="container" style="text-align:center; padding-top:30vh;">
+        <div style="font-size:48px; margin-bottom:20px;">🔒</div>
+        <h2 style="font-size:24px; font-weight:800; margin-bottom:12px;">현재 이용할 수 없습니다</h2>
+        <p style="color:var(--text-secondary); font-size:15px; line-height:1.6;">
+            세션 시간에 다시 접속해주세요.
+        </p>
+    </div>
+</div>
+
 <!-- ========== LANDING ========== -->
 <div id="landing" class="step active">
     <div class="container">
@@ -1162,6 +1173,18 @@
 </div>
 
 <script>
+// ===== 사이트 ON/OFF 스위치 =====
+// true = 사이트 열림 | false = 사이트 닫힘
+const SITE_ACTIVE = false;
+
+(function() {
+    if (!SITE_ACTIVE) {
+        document.getElementById('landing').classList.remove('active');
+        document.getElementById('siteClosed').style.display = 'flex';
+        document.getElementById('siteClosed').classList.add('active');
+    }
+})();
+
 // ===== State =====
 const state = {
     targetRevenue: 0,
